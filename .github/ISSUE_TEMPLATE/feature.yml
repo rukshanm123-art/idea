@@ -1,0 +1,39 @@
+name: Feature / Task
+description: A unit of work for the AI coding agent. Must have testable acceptance criteria.
+title: '[Feature] '
+labels: ['agent-ready']
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What should be built and why. Reference docs/product_requirements.md sections where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable, testable behaviors. The agent's PR is judged against these.
+      placeholder: |
+        - [ ] Login page renders at /login
+        - [ ] Valid credentials return a JWT
+        - [ ] Invalid credentials return 401 with an error message
+        - [ ] Unit tests cover all of the above
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 (critical)
+        - P1 (important)
+        - P2 (nice to have)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Technical notes (optional)
+      description: Constraints, pointers to relevant code, or architecture considerations.

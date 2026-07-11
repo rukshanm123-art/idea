@@ -1,0 +1,54 @@
+# The coding agent (spec step 3).
+#
+# Two ways to trigger:
+#   1. Mention @claude in any issue or PR comment — it implements / responds.
+#   2. Add the `agent-ready` label to an issue — it picks the issue up
+#      automatically, implements it per CLAUDE.md, and opens a PR.
+#
+# Requires: ANTHROPIC_API_KEY repo secret + the Claude GitHub App installed
+# (run `claude` locally and use /install-github-app, or install from
+# https://github.com/apps/claude).
+
+name: Claude Agent
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [labeled]
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && github.event.label.name == 'agent-ready')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # When triggered by the agent-ready label, give an explicit task;
+          # for @claude mentions the comment itself is the instruction.
+          prompt: |
+            ${{ github.event_name == 'issues' && format(
+              'Implement GitHub issue #{0} in this repository. Follow CLAUDE.md exactly: read the docs in docs/ first, satisfy every acceptance criterion in the issue, add tests, run `npm run check` until green, then open a PR whose body contains "Closes #{0}".',
+              github.event.issue.number) || '' }}
+          claude_args: |
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
