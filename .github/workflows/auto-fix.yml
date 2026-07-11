@@ -24,7 +24,12 @@ jobs:
       github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # NOTE: comments posted with the default GITHUB_TOKEN do NOT trigger
+      # other workflows (GitHub anti-recursion rule), so for the @claude
+      # comment to actually wake the agent, set an AUTOFIX_PAT repo secret
+      # (a fine-grained PAT with Issues+Pull requests write). Without it the
+      # comment is still posted, but a human must nudge the agent.
+      GH_TOKEN: ${{ secrets.AUTOFIX_PAT || secrets.GITHUB_TOKEN }}
       MAX_ATTEMPTS: 3
     steps:
       - name: Comment @claude on the failing PR (with loop guard)
