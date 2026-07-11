@@ -1,0 +1,30 @@
+name: Bug
+description: A defect. The fixing PR must include a regression test.
+title: '[Bug] '
+labels: ['bug', 'agent-ready']
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Current vs expected behavior
+      placeholder: |
+        Current: ...
+        Expected: ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 (critical)
+        - P1 (important)
+        - P2 (nice to have)
+    validations:
+      required: true

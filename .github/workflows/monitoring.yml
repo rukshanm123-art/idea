@@ -1,0 +1,31 @@
+# Monitoring agent (spec step 8). Runs on a schedule, checks the staging
+# deployment and any configured error feed, and files GitHub issues for
+# problems — which puts them straight into the agent's backlog.
+
+name: Monitoring
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      STAGING_URL: ${{ vars.STAGING_URL }}
+      # Optional: JSON endpoint returning recent errors, e.g. a Sentry API URL.
+      ERROR_FEED_URL: ${{ vars.ERROR_FEED_URL }}
+      ERROR_FEED_TOKEN: ${{ secrets.ERROR_FEED_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check staging + error feed, file issues
+        run: node scripts/monitor.mjs

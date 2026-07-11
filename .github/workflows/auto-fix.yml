@@ -1,0 +1,58 @@
+# Auto-fix loop (spec step 6): when CI fails on an agent PR, ask the agent to
+# fix it. The @claude comment triggers the Claude Agent workflow, which pushes
+# fixes to the same branch, which re-runs CI — the loop continues until green.
+#
+# Loop guard: gives up after MAX_ATTEMPTS auto-fix comments per PR so a
+# genuinely stuck change can't burn tokens forever.
+
+name: Auto-Fix Loop
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  issues: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  request-fix:
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MAX_ATTEMPTS: 3
+    steps:
+      - name: Comment @claude on the failing PR (with loop guard)
+        run: |
+          set -euo pipefail
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          REPO="${{ github.repository }}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+
+          PR_NUMBER=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PR for branch $BRANCH — nothing to do."
+            exit 0
+          fi
+
+          MARKER="<!-- auto-fix-request -->"
+          ATTEMPTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq "[.[] | select(.body | contains(\"$MARKER\"))] | length")
+          if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body \
+              "Auto-fix loop stopped after $MAX_ATTEMPTS attempts. A human needs to look at this. Latest failing run: $RUN_URL"
+            exit 0
+          fi
+
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body \
+            "$MARKER
+          @claude CI failed on this PR (attempt $((ATTEMPTS + 1))/$MAX_ATTEMPTS).
+          Failing run: $RUN_URL
+
+          Read the failing job logs, fix the root cause (do not weaken or delete tests), run \`npm run check\` locally until green, and push the fix to this branch."

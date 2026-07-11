@@ -1,0 +1,56 @@
+# Staging deployment (spec step 7). Deploys every merge to main to staging,
+# then runs smoke tests against the live deployment.
+#
+# The deploy step is a TEMPLATE — fill in your platform of choice
+# (Vercel / Fly.io / Render / Railway / AWS) once the product has something
+# deployable, and set STAGING_URL as a repo variable.
+
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck && npm test
+
+      - name: Deploy to staging (TEMPLATE — replace with your platform)
+        run: |
+          echo "::notice::No deploy target configured yet."
+          echo "Examples:"
+          echo "  Vercel:  npx vercel deploy --prebuilt --token \$VERCEL_TOKEN"
+          echo "  Fly.io:  flyctl deploy --remote-only"
+          echo "  Render:  curl -X POST \$RENDER_DEPLOY_HOOK"
+
+      - name: Smoke test deployed app
+        if: vars.STAGING_URL != ''
+        run: |
+          set -euo pipefail
+          echo "Smoke testing ${{ vars.STAGING_URL }}"
+          for i in 1 2 3 4 5; do
+            if curl -fsS --max-time 10 "${{ vars.STAGING_URL }}/health"; then
+              echo "Staging is healthy."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Staging healthcheck failed" >&2
+          exit 1
