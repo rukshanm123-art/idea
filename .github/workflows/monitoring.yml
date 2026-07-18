@@ -24,7 +24,7 @@ jobs:
       ERROR_FEED_TOKEN: ${{ secrets.ERROR_FEED_TOKEN }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Check staging + error feed, file issues
